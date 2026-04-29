@@ -103,7 +103,8 @@ INSTRUCTIONS:
 Analyze this supervisor transcript carefully. 
 
 IMPORTANT SCORING WARNINGS — avoid these common errors:
-- Do NOT give high scores (8-9) just because the supervisor sounds happy. Check if the work would survive the Fellow's departure.
+- Do NOT give high scores (8-9) just because the supervisor sounds happy. Check if the work would survive the Fellow's departure
+- Do NOT score above 6 if all work would stop when the Fellow leaves, even when the supervisor is very positive.
 - Do NOT give low scores just because the supervisor sounds critical. Check if there's real systems work being dismissed due to presence bias.
 - Do NOT confuse task absorption (Fellow doing manager's job) with systems building. Absorption = score 5-6 max.
 - DO detect supervisor bias and note it explicitly in your justification.
