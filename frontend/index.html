@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trinethra — Supervisor Feedback Analyzer</title>
+<style>
+  :root {
+    --bg: #f5f4f0;
+    --white: #ffffff;
+    --border: #e0ddd6;
+    --text: #1a1a1a;
+    --muted: #6b6b6b;
+    --dim: #9a9a9a;
+    --accent: #1d4ed8;
+    --accent-light: #eff6ff;
+    --green: #15803d;
+    --green-light: #f0fdf4;
+    --red: #b91c1c;
+    --red-light: #fef2f2;
+    --yellow: #92400e;
+    --yellow-light: #fffbeb;
+    --orange: #c2410c;
+    --orange-light: #fff7ed;
+    --purple: #6d28d9;
+    --purple-light: #f5f3ff;
+    --tag-pos: #dcfce7;
+    --tag-pos-text: #15803d;
+    --tag-neg: #fee2e2;
+    --tag-neg-text: #b91c1c;
+    --tag-neu: #f1f5f9;
+    --tag-neu-text: #475569;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.04);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* ── Layout ── */
+  .app { display: flex; flex-direction: column; min-height: 100vh; }
+
+  .topbar {
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .topbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    font-size: 15px;
+  }
+
+  .topbar-brand .eye { font-size: 18px; }
+
+  .topbar-sub {
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 400;
+  }
+
+  .status-pill {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 99px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #d1d5db;
+  }
+
+  .status-dot.ok { background: #22c55e; }
+
+  .main {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 0;
+    flex: 1;
+    min-height: calc(100vh - 52px);
+  }
+
+  /* ── Left Panel (Input) ── */
+  .input-panel {
+    background: var(--white);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 52px);
+    position: sticky;
+    top: 52px;
+    overflow-y: auto;
+  }
+
+  .panel-header {
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .panel-title {
+    font-weight: 600;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+
+  .panel-desc {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .input-body { padding: 16px 20px; flex: 1; display: flex; flex-direction: column; gap: 14px; }
+
+  .field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 5px;
+  }
+
+  input[type="text"], textarea {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 12px;
+    font-size: 13px;
+    font-family: inherit;
+    background: var(--white);
+    color: var(--text);
+    transition: border-color 0.15s;
+    resize: none;
+  }
+
+  input[type="text"]:focus, textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(29,78,216,0.08);
+  }
+
+  textarea { line-height: 1.6; }
+
+  .char-count {
+    font-size: 11px;
+    color: var(--dim);
+    text-align: right;
+    margin-top: 3px;
+  }
+
+  .sample-row {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .sample-btn {
+    font-size: 11px;
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    cursor: pointer;
+    color: var(--muted);
+    transition: all 0.15s;
+  }
+
+  .sample-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-light);
+  }
+
+  .run-btn {
+    width: 100%;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 11px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .run-btn:hover:not(:disabled) { background: #1e40af; }
+  .run-btn:disabled { background: #93c5fd; cursor: not-allowed; }
+
+  .draft-notice {
+    background: var(--yellow-light);
+    border: 1px solid #fde68a;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 12px;
+    color: var(--yellow);
+    line-height: 1.5;
+  }
+
+  /* ── Right Panel (Output) ── */
+  .output-panel {
+    padding: 24px;
+    overflow-y: auto;
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 400px;
+    color: var(--dim);
+    text-align: center;
+    gap: 8px;
+  }
+
+  .empty-icon { font-size: 40px; opacity: 0.3; }
+
+  .loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    gap: 16px;
+    color: var(--muted);
+  }
+
+  .spinner {
+    width: 32px; height: 32px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Result Sections ── */
+  .results { display: flex; flex-direction: column; gap: 16px; }
+
+  .result-section {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+
+  .section-head {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #fafaf9;
+  }
+
+  .section-title {
+    font-weight: 600;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-icon { font-size: 15px; }
+  .section-body { padding: 16px 18px; }
+
+  /* Score Card */
+  .score-main {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 14px;
+  }
+
+  .score-circle {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 26px;
+    flex-shrink: 0;
+    border: 3px solid;
+  }
+
+  .score-circle .score-sub {
+    font-size: 10px;
+    font-weight: 500;
+    margin-top: -2px;
+  }
+
+  .score-circle.band-need { color: var(--red); border-color: var(--red); background: var(--red-light); }
+  .score-circle.band-prod { color: var(--yellow); border-color: #fbbf24; background: var(--yellow-light); }
+  .score-circle.band-perf { color: var(--green); border-color: var(--green); background: var(--green-light); }
+
+  .score-meta { flex: 1; }
+  .score-label { font-weight: 700; font-size: 16px; margin-bottom: 3px; }
+  .score-band { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .score-confidence {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 99px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+
+  .score-justification {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text);
+    padding: 12px 14px;
+    background: var(--bg);
+    border-radius: 8px;
+    margin-bottom: 10px;
+  }
+
+  .bias-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 99px;
+    background: var(--orange-light);
+    color: var(--orange);
+    border: 1px solid #fed7aa;
+  }
+
+  /* Evidence */
+  .evidence-item {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+  }
+
+  .evidence-item:last-child { margin-bottom: 0; }
+
+  .evidence-quote {
+    font-style: italic;
+    color: var(--text);
+    margin-bottom: 8px;
+    font-size: 13px;
+    line-height: 1.6;
+    border-left: 3px solid var(--border);
+    padding-left: 10px;
+  }
+
+  .evidence-footer {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .tag {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 99px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .tag-positive { background: var(--tag-pos); color: var(--tag-pos-text); }
+  .tag-negative { background: var(--tag-neg); color: var(--tag-neg-text); }
+  .tag-neutral { background: var(--tag-neu); color: var(--tag-neu-text); }
+  .tag-dim { background: var(--accent-light); color: var(--accent); }
+
+  .evidence-interpretation {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 6px;
+    line-height: 1.5;
+  }
+
+  /* KPI Mapping */
+  .kpi-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .kpi-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--bg);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+
+  .kpi-label {
+    font-weight: 600;
+    font-size: 12px;
+    min-width: 110px;
+    padding-top: 1px;
+  }
+
+  .kpi-detail {
+    font-size: 12px;
+    color: var(--muted);
+    flex: 1;
+  }
+
+  .kpi-type {
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 99px;
+    white-space: nowrap;
+  }
+
+  .kpi-type.system { background: var(--green-light); color: var(--green); border: 1px solid #bbf7d0; }
+  .kpi-type.personal { background: var(--yellow-light); color: var(--yellow); border: 1px solid #fde68a; }
+
+  /* Gaps */
+  .gap-item {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 10px 12px;
+    background: var(--red-light);
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    margin-bottom: 8px;
+  }
+
+  .gap-item:last-child { margin-bottom: 0; }
+  .gap-icon { font-size: 14px; flex-shrink: 0; padding-top: 1px; }
+  .gap-dim { font-weight: 600; font-size: 12px; color: var(--red); margin-bottom: 3px; }
+  .gap-detail { font-size: 12px; color: #7f1d1d; line-height: 1.5; }
+
+  /* Follow-up Questions */
+  .question-item {
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 8px;
+  }
+
+  .question-item:last-child { margin-bottom: 0; }
+  .question-num {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 5px;
+  }
+
+  .question-text {
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 5px;
+    line-height: 1.5;
+  }
+
+  .question-goal {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  /* Error */
+  .error-box {
+    background: var(--red-light);
+    border: 1px solid #fecaca;
+    border-radius: 10px;
+    padding: 16px 18px;
+    color: var(--red);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  /* Dimensions Coverage */
+  .dim-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .dim-pill {
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    border: 1px solid;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .dim-pill.covered { background: var(--green-light); border-color: #bbf7d0; color: var(--green); }
+  .dim-pill.missing { background: var(--red-light); border-color: #fecaca; color: var(--red); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- Top Bar -->
+  <div class="topbar">
+    <div class="topbar-brand">
+      <span class="eye">👁️</span>
+      <div>
+        Trinethra
+        <span class="topbar-sub"> — Supervisor Feedback Analyzer</span>
+      </div>
+    </div>
+    <div class="status-pill">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">Checking Ollama…</span>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <!-- Left: Input Panel -->
+    <div class="input-panel">
+      <div class="panel-header">
+        <div class="panel-title">Input</div>
+        <div class="panel-desc">Paste a supervisor transcript to generate a draft analysis.</div>
+      </div>
+
+      <div class="input-body">
+
+        <div class="draft-notice">
+          ⚠️ <strong>This is a draft.</strong> The AI suggests — you decide. Review every section before finalizing.
+        </div>
+
+        <div class="field">
+          <label>Fellow Name (optional)</label>
+          <input type="text" id="fellowName" placeholder="e.g. Karthik Narayanan">
+        </div>
+
+        <div class="field">
+          <label>Company (optional)</label>
+          <input type="text" id="companyName" placeholder="e.g. Veerabhadra Auto Components">
+        </div>
+
+        <div class="field" style="flex:1; display:flex; flex-direction:column;">
+          <label>Supervisor Transcript</label>
+          <textarea
+            id="transcript"
+            placeholder="Paste the full supervisor call transcript here…"
+            style="flex:1; min-height: 220px;"
+            oninput="updateCount()"
+          ></textarea>
+          <div class="char-count"><span id="charCount">0</span> characters</div>
+        </div>
+
+        <div class="field">
+          <label>Load Sample Transcript</label>
+          <div class="sample-row">
+            <button class="sample-btn" onclick="loadSample(0)">Karthik (Trap: high score)</button>
+            <button class="sample-btn" onclick="loadSample(1)">Meena (Trap: low score)</button>
+            <button class="sample-btn" onclick="loadSample(2)">Anil (Trap: dependency)</button>
+          </div>
+        </div>
+
+        <button class="run-btn" id="runBtn" onclick="runAnalysis()">
+          <span id="btnIcon">▶</span>
+          <span id="btnText">Run Analysis</span>
+        </button>
+
+      </div>
+    </div>
+
+    <!-- Right: Output Panel -->
+    <div class="output-panel" id="outputPanel">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">👁️</div>
+        <div style="font-weight:600; font-size:15px; color: var(--text)">Ready to analyze</div>
+        <div style="font-size:13px;">Paste a transcript and click Run Analysis</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ─── Sample Transcripts ────────────────────────────────────────────────────
+const SAMPLES = [
+  {
+    fellow: "Karthik Narayanan",
+    company: "Veerabhadra Auto Components",
+    transcript: `Karthik? Haan, he is good. Very sincere boy. Comes on time, leaves on time — actually he stays late most days, I don't ask him to. He's always on the floor. He's not one of those people who sits in the office and sends emails. He's hands-on.
+
+What does he do? He helps me with production tracking. Earlier I used to maintain everything in my head — how many pieces came off each machine, what's the rejection rate, what's pending for dispatch. Now Karthik maintains a sheet. Every evening he updates it and sends it to me on WhatsApp. Very useful. I look at it every morning before the shift meeting.
+
+He also handles a lot of the coordination. When we have quality complaints from Tier 1 — they send an email, sometimes call directly — Karthik takes the first call. He notes down the complaint, talks to the QC team, and gives me a summary. Earlier I used to handle all of this myself. Big relief.
+
+The new drum brake line — he's been involved from the beginning. He helped set up the machine layout. He did a study on cycle times and suggested we move the deburring station closer to the CNC machines. Good idea. We did it. Saved maybe 10 minutes per batch in material handling.
+
+Any complaints? No, not really. Sometimes he asks too many questions — like he wants to understand everything before doing it. Sometimes in a factory you just need to do it and learn by doing. But this is a minor thing.
+
+One thing — he doesn't really push back. If I tell him to do something, he does it. Even if it's not the best way. I wish he would tell me sometimes, 'Sir, I think we should do it differently.' But maybe he's still new. He'll get there.
+
+Overall I'm happy. He's become part of the team. The workers on the floor know him. He speaks to them in Marathi — that helps. If you asked them, they would say he's one of us.`
+  },
+  {
+    fellow: "Meena Krishnamurthy",
+    company: "Lakshmi Textiles",
+    transcript: `Meena. Look, she is smart. No doubt. She understands things quickly. But I have some concerns.
+
+She spends too much time on her laptop. In a garment factory, the action is on the floor — cutting, stitching, finishing, packing. If you're not on the floor, you're not seeing what's happening. I tell her — go to the floor, talk to the line supervisors, see what's stuck. She goes, but after 30 minutes she's back at her desk typing.
+
+She made some Excel sheets. Fine. One is an order tracker — which order is at which stage, what's the expected completion date. Another one tracks rejection percentages by line. She showed it to me last week in a meeting. The data was correct, I'll give her that. She found that Line 3 has 14% rejection compared to 6% average on the other lines. Nobody had quantified this before.
+
+But here's my problem. I showed this to my production manager and he said, 'So? We know Line 3 has issues. The operators are new.' So the data is correct but the people on the floor already know. Meena is telling us what we already know, just in Excel format.
+
+She also wrote something she calls an 'SOP' for the cutting section. Step-by-step process for how to handle a new order — from fabric receiving to pattern matching to cut-plan approval. I looked at it. It's well-written. But nobody uses it. She pinned it on the wall near the cutting master's station. It's still there. Nobody reads it.
+
+I told her — the problem is not that we don't have a process. The problem is that the cutting master gets 5 phone calls during a changeover and loses focus. An SOP on the wall doesn't solve that. She needs to understand the floor reality, not just write documents.
+
+On the positive side — she did something useful with the dispatch team. She started tracking which orders are at risk of missing the ship date and sending me a daily email by 11 AM. Before this, I would find out about delays at 4 PM when the container was supposed to leave. Now I know by 11 AM and can push. Two weeks ago we saved a shipment to Decathlon because of this. That was good.
+
+My worry is that she's building things in Excel that nobody asked for and nobody uses. I need someone who solves problems on the floor, not someone who makes beautiful sheets in the office.
+
+Is she failing? No. She's trying. She's just not connecting her work to what actually matters here. If she learns to do that, she could be very good.`
+  },
+  {
+    fellow: "Anil Menon",
+    company: "Prabhat Foods",
+    transcript: `Anil is my right hand. I don't know how we managed before him.
+
+Every morning he's in my office at 8:15 with the day's plan — what's in production, what's getting dispatched, what needs my attention. He prioritizes. Before Anil, I used to walk into the factory and get hit with 10 problems at once. Now he filters. He tells me — these 3 need your decision, these 7 I'll handle.
+
+He handles the retailer complaints. If a retailer calls about expired stock or taste issues, Anil takes the call, logs it, coordinates with the production team to pull the batch records, and gets back to the retailer within 24 hours. Our complaint closure time has gone from 5 days to under 2 days since he started.
+
+He manages the daily production meeting. I used to run it — 45 minutes, no agenda, everyone talks about everything. Anil took it over, made a structure, now it's 20 minutes. He keeps it focused.
+
+He also coordinates with our distributor in Pune and the one in Aurangabad. He tracks their stock levels, tells dispatch when to send the next shipment. Earlier my dispatch supervisor would wait until the distributor called and said 'we're out of stock.' Now Anil tracks it proactively.
+
+I'll tell you a story. Three weeks ago, we had a power failure at 2 AM. The cold chain broke. Anil wasn't there — it was the night shift. But the night supervisor called him. Anil came to the factory at 3 AM, personally checked the temperature logs, identified which batches were compromised, held them from dispatch, and had the QC reports ready by the time I arrived at 8 AM. No compromised product reached the market. Last year, a similar incident happened and we had to recall 200 cases of paneer from Reliance Fresh. This time — zero impact.
+
+Does he have areas to improve? I'm sure he does, but honestly I can't think of any right now. He's so helpful. He takes so much off my plate. I feel like I can finally focus on the business instead of firefighting.
+
+My production manager — Raghav — he's been here 8 years. He's good at running the machines but he doesn't plan. Anil has started doing Raghav's planning for him. Raghav gives Anil the list of orders and Anil creates the production schedule. I know this is not ideal — Raghav should do his own planning. But it works, so I haven't said anything.
+
+One more thing — Anil writes very well. His reports to me are clear. When I forward them to my accountant or my distributor, they understand. He has a professional quality that we don't usually see at this level.
+
+If I could keep him for 2 years instead of 6 months, I would.`
+  }
+];
+
+const DIM_LABELS = {
+  execution: "Driving Execution",
+  systems_building: "Systems Building",
+  kpi_impact: "KPI Impact",
+  change_management: "Change Management"
+};
+
+const ALL_DIMS = ["execution", "systems_building", "kpi_impact", "change_management"];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────
+
+function updateCount() {
+  const t = document.getElementById('transcript').value;
+  document.getElementById('charCount').textContent = t.length.toLocaleString();
+}
+
+function loadSample(idx) {
+  const s = SAMPLES[idx];
+  document.getElementById('fellowName').value = s.fellow;
+  document.getElementById('companyName').value = s.company;
+  document.getElementById('transcript').value = s.transcript;
+  updateCount();
+}
+
+function bandClass(score) {
+  if (score <= 3) return 'band-need';
+  if (score <= 6) return 'band-prod';
+  return 'band-perf';
+}
+
+function bandName(score) {
+  if (score <= 3) return 'Need Attention';
+  if (score <= 6) return 'Productivity';
+  return 'Performance';
+}
+
+function signalTag(signal) {
+  const map = {
+    positive: 'tag-positive',
+    negative: 'tag-negative',
+    neutral: 'tag-neutral'
+  };
+  return map[signal] || 'tag-neutral';
+}
+
+function dimLabel(d) {
+  return DIM_LABELS[d] || d;
+}
+
+// ─── Check Ollama Status ───────────────────────────────────────────────────
+
+async function checkHealth() {
+  try {
+    const r = await fetch('http://localhost:8000/health');
+    const data = await r.json();
+    const dot = document.getElementById('statusDot');
+    const txt = document.getElementById('statusText');
+    if (data.ollama === 'connected') {
+      dot.classList.add('ok');
+      txt.textContent = `Ollama connected`;
+    } else {
+      txt.textContent = 'Ollama not running';
+    }
+  } catch {
+    document.getElementById('statusText').textContent = 'Backend not running';
+  }
+}
+
+// ─── Run Analysis ─────────────────────────────────────────────────────────
+
+async function runAnalysis() {
+  const transcript = document.getElementById('transcript').value.trim();
+  const fellow = document.getElementById('fellowName').value.trim();
+  const company = document.getElementById('companyName').value.trim();
+
+  if (!transcript || transcript.length < 100) {
+    alert('Please paste a full supervisor transcript (at least 100 characters).');
+    return;
+  }
+
+  // Loading state
+  document.getElementById('runBtn').disabled = true;
+  document.getElementById('btnIcon').textContent = '⏳';
+  document.getElementById('btnText').textContent = 'Analyzing…';
+
+  const out = document.getElementById('outputPanel');
+  out.innerHTML = `
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <div style="font-weight:600">Analyzing transcript…</div>
+      <div style="font-size:12px; color: var(--dim)">This takes 20–60 seconds depending on your model</div>
+    </div>`;
+
+  try {
+    const res = await fetch('http://localhost:8000/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ transcript, fellow_name: fellow, company_name: company })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Analysis failed');
+    }
+
+    const data = await res.json();
+    renderResults(data, out);
+
+  } catch (e) {
+    out.innerHTML = `
+      <div class="error-box">
+        <strong>Error: ${e.message}</strong><br><br>
+        Common fixes:<br>
+        • Make sure Ollama is running: <code>ollama serve</code><br>
+        • Make sure backend is running: <code>uvicorn main:app --reload</code> (in /backend folder)<br>
+        • Make sure you pulled a model: <code>ollama pull llama3.2</code>
+      </div>`;
+  } finally {
+    document.getElementById('runBtn').disabled = false;
+    document.getElementById('btnIcon').textContent = '▶';
+    document.getElementById('btnText').textContent = 'Run Analysis';
+  }
+}
+
+// ─── Render Results ────────────────────────────────────────────────────────
+
+function renderResults(d, container) {
+  const score = d.score || {};
+  const evidence = d.evidence || [];
+  const kpis = d.kpiMapping || [];
+  const gaps = d.gaps || [];
+  const questions = d.followUpQuestions || [];
+
+  // Compute covered vs missing dimensions
+  const gapDims = gaps.map(g => g.dimension);
+  const evidenceDims = evidence.map(e => e.dimension);
+  const coveredDims = ALL_DIMS.filter(d => evidenceDims.includes(d) && !gapDims.includes(d));
+  const missingDims = ALL_DIMS.filter(d => gapDims.includes(d));
+
+  container.innerHTML = `<div class="results">
+
+    <!-- Score -->
+    <div class="result-section">
+      <div class="section-head">
+        <div class="section-title"><span class="section-icon">📊</span> Suggested Score</div>
+        <span style="font-size:11px; color:var(--muted)">Review before finalizing</span>
+      </div>
+      <div class="section-body">
+        <div class="score-main">
+          <div class="score-circle ${bandClass(score.value)}">
+            ${score.value || '?'}
+            <span class="score-sub">/10</span>
+          </div>
+          <div class="score-meta">
+            <div class="score-label">${score.label || '—'}</div>
+            <div class="score-band">${bandName(score.value)} Band</div>
+            <div class="score-confidence">
+              Confidence: ${score.confidence || 'unknown'}
+            </div>
+          </div>
+        </div>
+        <div class="score-justification">${score.justification || '—'}</div>
+        ${score.bias_detected && score.bias_detected !== 'none detected'
+          ? `<div class="bias-tag">⚠️ Bias detected: ${score.bias_detected}</div>` : ''}
+
+        <div class="dim-grid">
+          ${ALL_DIMS.map(dim => {
+            const covered = !gapDims.includes(dim);
+            return `<div class="dim-pill ${covered ? 'covered' : 'missing'}">
+              ${covered ? '✓' : '✗'} ${dimLabel(dim)}
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>
+
+    <!-- Evidence -->
+    <div class="result-section">
+      <div class="section-head">
+        <div class="section-title"><span class="section-icon">💬</span> Extracted Evidence</div>
+        <span style="font-size:11px; color:var(--muted)">${evidence.length} quotes</span>
+      </div>
+      <div class="section-body">
+        ${evidence.length === 0
+          ? '<div style="color:var(--dim);font-size:13px;">No evidence extracted.</div>'
+          : evidence.map(e => `
+            <div class="evidence-item">
+              <div class="evidence-quote">"${e.quote}"</div>
+              <div class="evidence-footer">
+                <span class="tag ${signalTag(e.signal)}">${e.signal}</span>
+                <span class="tag tag-dim">${dimLabel(e.dimension)}</span>
+              </div>
+              ${e.interpretation
+                ? `<div class="evidence-interpretation">↳ ${e.interpretation}</div>` : ''}
+            </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- KPI Mapping -->
+    <div class="result-section">
+      <div class="section-head">
+        <div class="section-title"><span class="section-icon">📈</span> KPI Mapping</div>
+        <span style="font-size:11px; color:var(--muted)">${kpis.length} KPIs identified</span>
+      </div>
+      <div class="section-body">
+        ${kpis.length === 0
+          ? '<div style="color:var(--dim);font-size:13px;">No KPI connections identified in this transcript.</div>'
+          : `<div class="kpi-grid">${kpis.map(k => `
+            <div class="kpi-item">
+              <div class="kpi-label">${k.kpi}</div>
+              <div class="kpi-detail">${k.evidence}</div>
+              <span class="kpi-type ${k.systemOrPersonal}">${k.systemOrPersonal === 'system' ? '🔧 System' : '👤 Personal'}</span>
+            </div>`).join('')}</div>`}
+      </div>
+    </div>
+
+    <!-- Gaps -->
+    <div class="result-section">
+      <div class="section-head">
+        <div class="section-title"><span class="section-icon">🔍</span> Coverage Gaps</div>
+        <span style="font-size:11px; color:var(--muted)">${gaps.length} gaps found</span>
+      </div>
+      <div class="section-body">
+        ${gaps.length === 0
+          ? '<div style="color:var(--green);font-size:13px;">✓ All 4 assessment dimensions covered.</div>'
+          : gaps.map(g => `
+            <div class="gap-item">
+              <div class="gap-icon">⚠️</div>
+              <div>
+                <div class="gap-dim">${dimLabel(g.dimension)}</div>
+                <div class="gap-detail">${g.detail}</div>
+              </div>
+            </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- Follow-up Questions -->
+    <div class="result-section">
+      <div class="section-head">
+        <div class="section-title"><span class="section-icon">❓</span> Suggested Follow-up Questions</div>
+        <span style="font-size:11px; color:var(--muted)">For next supervisor call</span>
+      </div>
+      <div class="section-body">
+        ${questions.length === 0
+          ? '<div style="color:var(--dim);font-size:13px;">No follow-up questions generated.</div>'
+          : questions.map((q, i) => `
+            <div class="question-item">
+              <div class="question-num">Question ${i + 1} — targeting: ${q.targetGap ? dimLabel(q.targetGap) : 'general'}</div>
+              <div class="question-text">${q.question}</div>
+              ${q.lookingFor
+                ? `<div class="question-goal">Looking for: ${q.lookingFor}</div>` : ''}
+            </div>`).join('')}
+      </div>
+    </div>
+
+  </div>`;
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────
+checkHealth();
+setInterval(checkHealth, 30000);
+</script>
+</body>
+</html>
