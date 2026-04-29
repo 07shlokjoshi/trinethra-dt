@@ -1,1 +1,0 @@
-# trinethra-dt
